@@ -8,6 +8,13 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          // response_type: "code",
+          redirect_uri: "http://localhost:5000/api/auth/callback/google",
+          // scope: "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email"
+        }
+      }
     }),
   ],
   session: {
@@ -44,48 +51,48 @@ export const authOptions: NextAuthOptions = {
 
 
     async jwt({ token, account, profile }) {
-  await connect();
+      await connect();
 
-  if (account?.provider === "google" && profile?.email) {
-    let user = await candidates.findOne({ email: profile.email });
+      if (account?.provider === "google" && profile?.email) {
+        let user = await candidates.findOne({ email: profile.email });
 
-    if (!user) {
-      // Get admin emails from env and split into array
-      const adminEmails = process.env.ADMIN_EMAILS?.split(",") || [];
-      const hrEmails = process.env.HR_EMAILS?.split(",") || [];
+        if (!user) {
+          // Get admin emails from env and split into array
+          const adminEmails = process.env.ADMIN_EMAILS?.split(",") || [];
+          const hrEmails = process.env.HR_EMAILS?.split(",") || [];
 
-      // Determine role
-      let role = "candidate";
-      const email = profile.email;
+          // Determine role
+          let role = "candidate";
+          const email = profile.email;
 
-      if (email.endsWith("@devxconsultancy.com")) {
-        role = "interviewer";
-      } else if (adminEmails.includes(email)) {
-        role = "admin";
-      } else if (hrEmails.includes(email)) {
-        role = "hr";
+          if (email.endsWith("@devxconsultancy.com")) {
+            role = "interviewer";
+          } else if (adminEmails.includes(email)) {
+            role = "admin";
+          } else if (hrEmails.includes(email)) {
+            role = "hr";
+          }
+
+          // Create user
+          user = await candidates.create({
+            email: profile.email,
+            username: profile.name?.replace(/\s+/g, "").toLowerCase(),
+            password: "",
+            role,
+          });
+
+          // --- Update lastLogin timestamp ---
+          await candidates.findByIdAndUpdate(user._id, { lastLogin: new Date() });
+        }
+
+        token._id = user._id.toString();
+        token.email = user.email;
+        token.username = user.username;
+        token.role = user.role;
       }
 
-      // Create user
-      user = await candidates.create({
-        email: profile.email,
-        username: profile.name?.replace(/\s+/g, "").toLowerCase(),
-        password: "",
-        role,
-      });
-
-      // --- Update lastLogin timestamp ---
-      await candidates.findByIdAndUpdate(user._id, { lastLogin: new Date() });
-    }
-
-    token._id = user._id.toString();
-    token.email = user.email;
-    token.username = user.username;
-    token.role = user.role;
-  }
-
-  return token;
-},
+      return token;
+    },
 
     async session({ session, token }) {
       if (session.user) {
