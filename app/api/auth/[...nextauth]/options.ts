@@ -11,7 +11,7 @@ export const authOptions: NextAuthOptions = {
       authorization: {
         params: {
           // response_type: "code",
-          redirect_uri: "http://localhost:5000/api/auth/callback/google",
+          redirect_uri: "https://devx-livid.vercel.app/api/auth/callback/google",
           // scope: "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email"
         }
       }
